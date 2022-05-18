@@ -157,7 +157,6 @@ if __name__ == '__main__':
             print(f"".join([x['name'] for x in colleges]))
         elif choice == "9":
             dump_data(data)
-            print("")
         else:
             break
         print("\n")
