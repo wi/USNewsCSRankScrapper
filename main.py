@@ -1,8 +1,14 @@
 import requests
 import json
+from datetime import datetime
 
 
 def get_page(page: int) -> dict:
+    """
+    Get the specified page from the US News endpoint.
+    :param page: the page number to get
+    :return: the json data of that page.
+    """
     r = requests.get(
         f"https://www.usnews.com/best-graduate-schools/api/search?program=top-science-schools&specialty=computer-science&_page={page}",
         headers={
@@ -23,11 +29,16 @@ def get_page(page: int) -> dict:
     return r.json()
 
 
-def get_data() -> dict:
+def get_data(max_pages: int = 100) -> dict:
+    """
+    Gets up to the 200 colleges from the US News computer science endpoint. Sorts relevant info into a dict.
+    :param max_pages: the max amount of pages to go through (I.E u only want the first 3 pages)
+    :return: the dict it creates bound to max pages
+    """
     colleges = {}
     page = 1
     json = get_page(page)
-    while len(json['data']['items']) != 0:
+    while len(json['data']['items']) != 0 and page <= max_pages:
         for college in json['data']['items']:
             rank = college['ranking']['display_rank']
             if rank not in colleges:
@@ -39,10 +50,17 @@ def get_data() -> dict:
                                    })
         page += 1
         json = get_page(page)
+        print(page)
     return colleges
 
 
 def get_by_state(colleges, state) -> list:
+    """
+    Find all college in a certain state
+    :param colleges: the data to look through.
+    :param state: the state to look for
+    :return: all colleges in the given state
+    """
     state = state.upper()
     ret = []
     for college_info in colleges.values():
@@ -53,6 +71,12 @@ def get_by_state(colleges, state) -> list:
 
 
 def get_by_city(colleges, city: str) -> list:
+    """
+    Find all colleges by the city it's in
+    :param colleges: the data to look through.
+    :param city: the city to look for
+    :return: all colleges that city matches the given city
+    """
     ret = []
     for college_info in colleges.values():
         for college in college_info:
@@ -62,16 +86,27 @@ def get_by_city(colleges, city: str) -> list:
 
 
 def get_by_name(colleges, name: str) -> list:
+    """
+    Find a college by it's name.
+    :param colleges: the data to look through.
+    :param name: the name of the college to look for
+    :return: the college that matches the name
+    """
     name = name.lower()
-    ret = []
     for college_info in colleges.values():
         for college in college_info:
             if college['name'].lower() == name:
-                ret.append(college)
-    return ret
+                return college
+    return []
 
 
 def get_by_score(colleges, score: float) -> list:
+    """
+    Find all colleges that has the given score.
+    :param colleges: the data to look through.
+    :param score: the score to look for.
+    :return: all colleges that has the given score.
+    """
     ret = []
     for college_info in colleges.values():
         for college in college_info:
@@ -81,7 +116,16 @@ def get_by_score(colleges, score: float) -> list:
 
 
 def get_by_score_within(colleges, minimum: float, maximum: float) -> list:
+    """
+    Find all colleges within two scores (max 5.0)
+    :param colleges: the data to look through.
+    :param minimum: the minimum score to look for.
+    :param maximum: the maximum score to look for.
+    :return: all colleges within the given score range.
+    """
     ret = []
+    if max(maximum, minimum) > 5.0:
+        raise Exception("The max score can only be 5.0.")
     for college_info in colleges.values():
         for college in college_info:
             if minimum <= college['score'] <= maximum:
@@ -90,6 +134,12 @@ def get_by_score_within(colleges, minimum: float, maximum: float) -> list:
 
 
 def get_by_id(colleges, college_id: str) -> dict:
+    """
+    Find a college by the college's ID.
+    :param colleges: the data to look through.
+    :param college_id: The college ID to look for.
+    :return: the college that matches the given ID.
+    """
     for college_info in colleges.values():
         for college in college_info:
             if college['id'] == college_id:
@@ -98,6 +148,12 @@ def get_by_id(colleges, college_id: str) -> dict:
 
 
 def get_by_fice(colleges, fice_code: str) -> dict:
+    """
+    Find a college by it's FICE code.
+    :param colleges: the data to look through.
+    :param fice_code: the FICE code to look for.
+    :return: the college that matches the FICE code.
+    """
     for college_info in colleges.values():
         for college in college_info:
             if college['fice_code'] == fice_code:
@@ -106,21 +162,32 @@ def get_by_fice(colleges, fice_code: str) -> dict:
 
 
 def get_by_rank(colleges, pos) -> list:
-    return colleges[pos] or None
+    """
+    Gives colleges that have a certain rank.
+    :param colleges: the data to look through.
+    :param pos: the position to search for.
+    :return: list of all colleges with that rank.
+    """
+    try:
+        return colleges[pos]
+    except KeyError:
+        return []
 
 
-def dump_data(colleges, timestamp: str = None):
+def dump_data(colleges, file_name: str = "colleges", timestamp: str = None):
+    """
+    Dumps the given data to a specified json file.
+    :param colleges: the data to dump.
+    :param file_name: the file  name to dump the data to default is colleges.json.
+    :param timestamp: non default timestamp if you'd like the key for the data to be different.
+    :return: None.
+    """
     if timestamp is None:
-        try:
-            from datetime import datetime
-        except ImportError:
-            print("Can't import datetime!")
-            return
         timestamp = datetime.timestamp(datetime.now())
-    j = json.load(open("./colleges.json", "r"))
+    j = json.load(open(f"./{file_name}.json", "r"))
     j[timestamp] = colleges
-    json.dump(j, open("./colleges.json", "w+"), indent=4, ensure_ascii=True)
-    print("dumped JSON data to ./colleges.json")
+    json.dump(j, open(f"./{file_name}.json", "w+"), indent=4, ensure_ascii=True)
+    print(f"dumped JSON data to ./{file_name}.json")
 
 
 if __name__ == '__main__':
@@ -153,8 +220,8 @@ if __name__ == '__main__':
             print(get_by_id(data, id_))
         elif choice == "8":
             rank_ = input("Enter the rank: ")
-            colleges = get_by_rank(data, rank_)
-            print(f"".join([x['name'] for x in colleges]))
+            colleges_ = get_by_rank(data, rank_)
+            print(f" ".join([x['name'] for x in colleges_]))
         elif choice == "9":
             dump_data(data)
         else:
